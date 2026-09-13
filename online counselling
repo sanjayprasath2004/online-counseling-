@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EmoCare AI Ultimate</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif}
+body{
+height:100vh;display:flex;justify-content:center;align-items:center;
+background:linear-gradient(135deg,#0b4ea2,#78b3ff);overflow:hidden;
+}
+body:before,body:after{
+content:'';position:fixed;border-radius:50%;background:rgba(255,255,255,.08)
+}
+body:before{width:450px;height:450px;top:-150px;right:-100px}
+body:after{width:350px;height:350px;bottom:-100px;left:-100px}
+
+.phone{
+width:430px;height:90vh;background:#fff;border-radius:30px;
+overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.25)
+}
+.header{
+background:#0b4ea2;color:#fff;padding:15px;display:flex;gap:12px;align-items:center
+}
+.avatar{
+width:50px;height:50px;border-radius:50%;background:#fff;
+display:flex;align-items:center;justify-content:center;font-size:26px
+}
+.quote{
+background:#e8f2ff;color:#0b4ea2;padding:8px;text-align:center;font-weight:600
+}
+.chat{
+height:calc(90vh - 190px);overflow:auto;padding:15px;background:#eef5ff
+}
+.msg{
+padding:14px 18px;border-radius:18px;margin:10px 0;max-width:80%;
+line-height:1.6;animation:fade .3s ease
+}
+.bot{background:#fff}
+.user{background:#0b4ea2;color:#fff;margin-left:auto}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+.typing{
+display:none;background:#fff;width:fit-content;padding:10px 16px;
+border-radius:20px;margin:10px 0
+}
+.input{display:flex;padding:10px;border-top:1px solid #ddd}
+.input input{flex:1;padding:12px;border-radius:20px;border:1px solid #ccc}
+.input button{margin-left:8px;border:none;background:#0b4ea2;color:#fff;padding:12px 18px;border-radius:20px}
+.screen{position:fixed;inset:0;display:flex;justify-content:center;align-items:center;background:linear-gradient(135deg,#0b4ea2,#78b3ff)}
+.card{background:#fff;padding:30px;border-radius:25px;width:380px;text-align:center}
+.btn{width:100%;padding:14px;border:none;border-radius:14px;background:#0b4ea2;color:#fff;margin-top:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div id="gender" class="screen">
+<div class="card">
+<h2>Welcome</h2>
+<p>Select gender to continue</p>
+<button class="btn" onclick="startChat('male')">👨 Male</button>
+<button class="btn" onclick="startChat('female')">👩 Female</button>
+<button class="btn" onclick="startChat('other')">🌟 Prefer not to say</button>
+</div>
+</div>
+
+
+<div class="phone" id="app" style="display:none">
+<div class="header">
+<div class="avatar" id="avatar">👤</div>
+<div><b>EmoCare AI Ultimate</b><br><small>Anonymous Emotional Support</small></div>
+</div>
+<div class="quote" id="quote">🌱 Every small step is progress.</div>
+<div class="chat" id="chat"></div>
+<div class="typing" id="typing">EmoCare AI is typing...</div>
+<div class="input">
+<input id="txt" placeholder="Share what's on your mind...">
+<button onclick="sendMsg()">Send</button>
+</div>
+</div>
+<script>
+const quotes = [
+"🌱 Every small step is progress.",
+"💙 Your feelings matter.",
+"☀️ Tomorrow brings new possibilities.",
+"🌈 You are stronger than you think.",
+"✨ Tough times don't last forever.",
+"🤝 Asking for help is a sign of strength.",
+"💪 You have survived difficult days before."
+];
+
+setInterval(() => {
+quote.innerHTML = quotes[Math.floor(Math.random() * quotes.length)];
+}, 5000);
+
+let waiting = false;
+let currentEmotion = "";
+let moodScore = 5;
+let messageCount = 0;
+
+const intents = [
+
+{
+tag:"depression",
+patterns:[
+"sad",
+"depressed",
+"hopeless",
+"empty",
+"worthless",
+"nothing matters",
+"numb"
+],
+responses:[
+"I'm sorry you're feeling this way. How long have you been feeling like this?",
+"That sounds very painful. Would you like to tell me more?"
+]
+},
+
+{
+tag:"anxiety",
+patterns:[
+"anxiety",
+"anxious",
+"panic",
+"worried",
+"can't stop worrying",
+"nervous"
+],
+responses:[
+"Anxiety can feel overwhelming. What has been worrying you recently?",
+"Would you like to try a grounding exercise together?"
+]
+},
+
+{
+tag:"stress",
+patterns:[
+"stress",
+"stressed",
+"pressure",
+"overwhelmed",
+"burnout"
+],
+responses:[
+"It sounds like you're carrying a lot right now. What's causing the stress?",
+"Feeling overwhelmed doesn't mean you're failing. What's the hardest part?"
+]
+},
+
+{
+tag:"lonely",
+patterns:[
+"alone",
+"lonely",
+"nobody understands me",
+"no friends"
+],
+responses:[
+"Feeling lonely can be very painful. Would you like to tell me more?",
+"You deserve support and connection. What's been making you feel isolated?"
+]
+},
+
+{
+tag:"relationship",
+patterns:[
+"breakup",
+"boyfriend",
+"girlfriend",
+"relationship",
+"heartbroken"
+],
+responses:[
+"Relationship difficulties can hurt deeply. What happened?",
+"Would you like to talk more about the relationship situation?"
+]
+},
+
+{
+tag:"study",
+patterns:[
+"exam",
+"college",
+"study",
+"cgpa",
+"semester",
+"marks"
+],
+responses:[
+"Academic pressure can be difficult. What's causing the most stress?",
+"What subject or challenge is worrying you most?"
+]
+},
+
+{
+tag:"career",
+patterns:[
+"job",
+"career",
+"placement",
+"interview",
+"unemployment"
+],
+responses:[
+"Career concerns can feel overwhelming. What are you worried about?",
+"What part of your career journey feels most difficult right now?"
+]
+}
+
+];
+
+function startChat(g){
+
+avatar.innerHTML =
+g==="male" ? "👨" :
+g==="female" ? "👩" : "👤";
+
+gender.style.display="none";
+app.style.display="block";
+
+bot(`
+💙 Welcome to EmoCare AI
+
+I'm here to provide emotional support and coping suggestions.
+
+This conversation is anonymous.
+
+I am not a licensed therapist.
+
+How are you feeling today?
+`);
+}
+
+function bot(text){
+chat.innerHTML += `<div class="msg bot">${text}</div>`;
+chat.scrollTop = chat.scrollHeight;
+}
+
+function user(text){
+chat.innerHTML += `<div class="msg user">${text}</div>`;
+chat.scrollTop = chat.scrollHeight;
+}
+
+function randomResponse(arr){
+return arr[Math.floor(Math.random()*arr.length)];
+}
+
+function findIntent(message){
+
+const msg = message.toLowerCase();
+
+for(const intent of intents){
+
+for(const pattern of intent.patterns){
+
+if(msg.includes(pattern.toLowerCase())){
+return intent;
+}
+
+}
+
+}
+
+return null;
+}
+
+function crisisResponse(){
+
+return `
+🚨 I'm concerned about your safety.
+
+Please reach out immediately:
+
+📞 Tele-MANAS: 14416
+
+📞 KIRAN:
+1800-599-0019
+
+📞 Vandrevala Foundation:
+1860-266-2345
+
+📞 Emergency:
+112
+
+Please contact someone you trust right now.
+
+Are you currently safe?
+`;
+}
+
+function getReply(text){
+
+const t = text.toLowerCase();
+const greetings = [
+"hi","hello","hey","good morning","good afternoon","good evening","hii"
+];
+
+if(greetings.some(g=>t.includes(g))){
+return `
+💙 Hello, welcome to EmoCare AI.
+
+I'm glad you're here today.
+
+This is a safe space where you can talk about your feelings, stress, worries, relationships, studies, work, or anything on your mind.
+
+How are you feeling right now?
+😊
+`;
+}
+
+messageCount++;
+
+if(t === "/help"){
+return `
+Emergency Support
+
+📞 Tele-MANAS: 14416
+
+📞 KIRAN:
+1800-599-0019
+
+📞 Emergency:
+112
+`;
+}
+
+if(t === "/quote"){
+return randomResponse(quotes);
+}
+
+if(t === "/status"){
+return `Current Mood Score: ${moodScore}/10`;
+}
+
+if(t === "/breathing"){
+return `
+🌿 Breathing Exercise
+
+Inhale 4 seconds
+
+Hold 4 seconds
+
+Exhale 6 seconds
+
+Repeat 5 times.
+`;
+}
+
+if(t === "/commands"){
+return `
+Available Commands
+
+/help
+/status
+/quote
+/breathing
+`;
+}
+
+const crisisPatterns = [
+"suicide",
+"kill myself",
+"want to die",
+"end my life",
+"better off dead",
+"life isn't worth living",
+"i don't want to be here anymore",
+"i want to disappear",
+"i can't go on",
+"hurt myself",
+"cut myself",
+"self harm",
+"self-harm"
+];
+
+for(const phrase of crisisPatterns){
+
+if(t.includes(phrase)){
+return crisisResponse();
+}
+
+}
+
+if(waiting){
+
+waiting = false;
+const followUps = {
+
+stress:`
+💙 Thank you for sharing.
+
+Remember:
+• Focus on one task at a time.
+• Take short breaks.
+• Drink water and rest.
+
+🌱 What's one small thing you can do today to reduce this stress?
+`,
+
+anxiety:`
+💙 Thank you for telling me.
+
+Try this:
+🌿 Take a slow deep breath.
+
+Look around and name:
+• 5 things you can see
+• 4 things you can touch
+• 3 things you can hear
+
+What do you think is making your anxiety strongest right now?
+`,
+
+depression:`
+💙 I appreciate your honesty.
+
+You matter.
+You are not alone.
+
+🌱 Have you spoken to a friend, family member, or trusted person about these feelings?
+`,
+
+bullying:`
+💙 Thank you for sharing that.
+
+Remember:
+• The bullying is not your fault.
+• You deserve respect.
+• Seeking support is a sign of strength.
+
+🤝 Is there a teacher, friend, parent, or mentor you trust?
+`,
+
+lonely:`
+💙 Thank you for opening up.
+
+Even though you feel alone right now, your feelings matter.
+
+🤝 When was the last time you felt connected to someone?
+`,
+
+relationship:`
+💙 Relationships can be difficult.
+
+Be kind to yourself while healing.
+
+🌱 What part of the situation hurts the most?
+`,
+
+study:`
+📚 Academic pressure is common.
+
+Let's break things down.
+
+What's the biggest challenge:
+• Time management
+• Exams
+• Grades
+• Understanding subjects
+`,
+
+career:`
+🌱 Career journeys take time.
+
+Every small step counts.
+
+What is worrying you most:
+• Finding a job
+• Interview preparation
+• Career direction
+• Work pressure
+`
+};
+
+return followUps[currentEmotion] ||
+"Thank you for sharing that with me. 💙";
+}
+
+if(/happy|great|awesome|good day|excited/.test(t)){
+moodScore++;
+return "That's wonderful 😊 What made today special?";
+}
+
+const intent = findIntent(t);
+
+if(intent){
+
+currentEmotion = intent.tag;
+waiting = true;
+
+if(intent.tag==="depression") moodScore--;
+if(intent.tag==="anxiety") moodScore--;
+if(intent.tag==="stress") moodScore--;
+
+return randomResponse(intent.responses);
+}
+if(/i am fine|fine|okay|ok|good/.test(t)){
+return `
+😊 I'm happy to hear that.
+
+Would you like to:
+
+1️⃣ Talk about your day
+2️⃣ Improve your mood
+3️⃣ Get a motivational quote
+4️⃣ Learn stress management tips
+
+What would you like?
+`;
+}
+if(messageCount % 5 === 0){
+
+const tips = [
+"💧 Drink some water.",
+"🚶 Take a short walk.",
+"🌿 Take 3 deep breaths.",
+"📝 Write down one positive thing today."
+];
+
+return randomResponse(tips);
+}
+
+return "Thank you for sharing that with me 💙. Would you like to tell me a little more?";
+}
+
+function sendMsg(){
+
+const t = txt.value.trim();
+
+if(!t) return;
+
+user(t);
+
+txt.value="";
+
+typing.style.display="block";
+
+setTimeout(() => {
+
+typing.style.display="none";
+
+bot(getReply(t));
+
+},800);
+
+}
+
+txt.addEventListener("keydown",e=>{
+
+if(e.key==="Enter"){
+sendMsg();
+}
+
+});
+
+
+</script>
+</body>
+</html>
